@@ -10,7 +10,7 @@
 // the repository checkout and MAKEFUN_OUTPUT_DIR at the output folder.
 // Locally: mkdir -p out && MAKEFUN_BOT_DIR=. MAKEFUN_OUTPUT_DIR=out node main.ts
 
-import { copyFileSync, mkdirSync } from "node:fs";
+import { copyFileSync, mkdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 const botDir = process.env.MAKEFUN_BOT_DIR ?? "/bot";
@@ -29,3 +29,17 @@ try {
 }
 
 console.log(`VIDEO.json copied to ${target}`);
+
+// Verify what the gate will read: the copied file must parse as JSON and
+// name the entry video, so a malformed VIDEO.json fails loudly here with a
+// clear message instead of surfacing later as an unreadable entry.
+try {
+  const video = JSON.parse(readFileSync(target, "utf8")) as { url?: unknown };
+  if (typeof video.url !== "string" || video.url.length === 0) {
+    throw new Error('VIDEO.json has no non-empty "url" field');
+  }
+  console.log(`entry video: ${video.url}`);
+} catch (error) {
+  console.error(`copied VIDEO.json is not usable: ${(error as Error).message}`);
+  process.exit(1);
+}
